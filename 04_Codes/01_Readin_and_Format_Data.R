@@ -32,26 +32,17 @@ pchc.mapping4 <- pchc.mapping3 %>%
             district = first(na.omit(district))) %>% 
   ungroup()
 
-# pchc.info <- pchc.universe %>% 
-#   rename(province = `省`, 
-#          city = `地级市`, 
-#          district = `区[县/县级市】`, 
-#          pchc = PCHC_Code) %>% 
-#   group_by(pchc) %>% 
-#   summarise(province = first(na.omit(province)), 
-#             city = first(na.omit(city)), 
-#             district = first(na.omit(district)), 
-#             pop = first(na.omit(`人口`)), 
-#             pop1 = first(na.omit(`其中：0-14岁人口数`)), 
-#             pop2 = first(na.omit(`15-64岁人口数`)), 
-#             pop3 = first(na.omit(`65岁及以上人口数`)), 
-#             doc = first(na.omit(`2016年执业医师（助理）人数`)), 
-#             pat = first(na.omit(`2016年总诊疗人次数`)), 
-#             inc = first(na.omit(`2016年药品收入（千元）`)), 
-#             est = first(na.omit(`其中：西药药品收入（千元）`))) %>% 
-#   ungroup() %>% 
-#   filter(!is.na(pop), !is.na(pop1), !is.na(pop2), !is.na(pop3), !is.na(doc), 
-#          !is.na(pat), !is.na(inc), !is.na(est))
+## CHPA
+chpa.info <- read.xlsx('02_Inputs/ims_chpa_to20Q3.xlsx', cols = 1:21, startRow = 4) %>% 
+  distinct(corp = Corp_Desc, type = MNF_TYPE, atc3 = ATC3_Code, atc4 = ATC4_Code, 
+           molecule = Molecule_Desc, product = Prd_desc, pack = Pck_Desc, 
+           packid = Pack_ID)
+
+## market definition
+market.def <- read_xlsx("02_Inputs/市场分子式明细_chk_20201127.xlsx") %>% 
+  distinct(atc3 = ATCIII.Code, molecule = Molecule.Composition.Name, market = TC) %>% 
+  left_join(chpa.info, by = c('atc3', 'molecule')) %>% 
+  filter(!is.na(packid))
 
 
 ##---- Raw data ----
@@ -76,7 +67,7 @@ raw.data <- bind_rows(raw.list) %>%
            units = if_else(is.na(Volume), Value / Price, Volume), 
            sales = Value) %>% 
   left_join(pchc.mapping3, by = c('province', 'city', 'district', 'hospital')) %>% 
-  filter(!is.na(pchc), !is.na(packid)) %>% 
+  filter(!is.na(pchc), packid %in% market.def$packid) %>% 
   mutate(packid = if_else(stri_sub(packid, 1, 5) == '47775', 
                           stri_paste('58906', stri_sub(packid, 6, 7)), 
                           packid), 
@@ -85,6 +76,9 @@ raw.data <- bind_rows(raw.list) %>%
                           packid)) %>% 
   filter(units > 0, sales > 0) %>% 
   select(year, date, quarter, province, city, district, pchc, packid, units, sales)
+
+missing.pack <- market.def %>% filter(!(packid %in% raw.data$packid))
+missing.mol <- market.def %>% filter(!(stri_sub(packid, 1, 5) %in% stri_sub(raw.data$packid, 1, 5)))
 
 ## Guangzhou
 raw.gz1 <- read_feather('02_Inputs/data/广州/Servier_guangzhou_171819_packid_moleinfo.feather') %>% 
@@ -127,7 +121,7 @@ raw.gz <- raw.gz2 %>%
            sales = value) %>% 
   bind_rows(raw.gz1) %>% 
   left_join(pchc.mapping3, by = c('province', 'city', 'hospital')) %>% 
-  filter(!is.na(pchc), !is.na(packid)) %>% 
+  filter(!is.na(pchc), packid %in% market.def$packid) %>% 
   mutate(packid = if_else(stri_sub(packid, 1, 5) == '47775', 
                           stri_paste('58906', stri_sub(packid, 6, 7)), 
                           packid), 
@@ -168,18 +162,18 @@ raw.sh <- bind_rows(raw.sh1, raw.sh2) %>%
                           pchc == 'PCHC06840' ~ 'PCHC06839', 
                           TRUE ~ pchc)) %>% 
   left_join(pchc.mapping4, by = c('province', 'city', 'pchc')) %>% 
-  filter(pchc != '#N/A', units > 0, sales > 0) %>% 
+  filter(pchc != '#N/A', packid %in% market.def$packid) %>% 
   mutate(packid = if_else(stri_sub(packid, 1, 5) == '47775', 
                           stri_paste('58906', stri_sub(packid, 6, 7)), 
                           packid), 
          packid = if_else(stri_sub(packid, 1, 5) == '06470', 
                           stri_paste('64895', stri_sub(packid, 6, 7)), 
                           packid)) %>% 
+  filter(units > 0, sales > 0) %>% 
   select(year, date, quarter, province, city, district, pchc, packid, units, sales)
 
 ## total
 raw.total <- bind_rows(raw.data, raw.gz, raw.sh) %>% 
-  filter(pchc != "#N/A", units > 0, sales > 0) %>% 
   group_by(pchc) %>% 
   mutate(province = first(na.omit(province)), 
          city = first(na.omit(city)), 
