@@ -77,9 +77,6 @@ raw.data <- bind_rows(raw.list) %>%
   filter(units > 0, sales > 0) %>% 
   select(year, date, quarter, province, city, district, pchc, packid, units, sales)
 
-missing.pack <- market.def %>% filter(!(packid %in% raw.data$packid))
-missing.mol <- market.def %>% filter(!(stri_sub(packid, 1, 5) %in% stri_sub(raw.data$packid, 1, 5)))
-
 ## Guangzhou
 raw.gz1 <- read_feather('02_Inputs/data/广州/Servier_guangzhou_171819_packid_moleinfo.feather') %>% 
   distinct(year = as.character(Year), 
@@ -183,5 +180,8 @@ raw.total <- bind_rows(raw.data, raw.gz, raw.sh) %>%
   summarise(units = sum(units, na.rm = TRUE), 
             sales = sum(sales, na.rm = TRUE)) %>% 
   ungroup()
+
+missing.pack <- market.def %>% filter(!(packid %in% raw.total$packid))
+missing.mol <- market.def %>% filter(!(stri_sub(packid, 1, 5) %in% stri_sub(raw.total$packid, 1, 5)))
 
 write_feather(raw.total, '03_Outputs/Servier_CHC2_Raw.feather')
