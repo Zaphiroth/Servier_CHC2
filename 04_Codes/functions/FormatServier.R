@@ -114,9 +114,7 @@ FormatServier <- function(proj.price, market.def,
         TRUE ~ NA_character_
       ), 
       channel = 'CHC', 
-      sales = round(sales, 2), 
-      units = round(units), 
-      dosageunits = round(Quantity * units)
+      dosageunits = Quantity * units
     ) %>% 
     select(Pack_ID = packid, 
            Channel = channel, 

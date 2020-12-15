@@ -7,14 +7,22 @@
 
 
 ##---- Universe info ----
+## target city
+kTargetCity <- c('北京', '上海', '杭州', '南京')
+
 ## PCHC
-pchc.universe <- read.xlsx("02_Inputs/Universe_PCHCCode_20201209.xlsx", sheet = "PCHC")
+pchc.universe <- read.xlsx("02_Inputs/2020_PCHC_Universe更新维护.xlsx", 
+                           sheet = "2020 CHC universe", cols = 1:19)
 
 pchc.universe.m <- pchc.universe %>% 
-  filter(!is.na(`单位名称`), !is.na(PCHC_Code)) %>% 
-  group_by(province = `省`, city = `地级市`, district = `区[县/县级市】`, hospital = `单位名称`) %>% 
-  summarise(pchc = first(PCHC_Code), 
-            est = first(na.omit(`其中：西药药品收入（千元）`))) %>% 
+  distinct(province = `省`, city = `地级市`, district = `区[县/县级市]`, 
+           pchc = `新版PCHC_Code`, est = `其中：西药药品收入（千元）`) %>% 
+  filter(est > 0) %>% 
+  group_by(pchc) %>% 
+  summarise(province = first(na.omit(province)), 
+            city = first(na.omit(city)), 
+            district = first(na.omit(district)), 
+            est = sum(est, na.rm = TRUE)) %>% 
   ungroup()
 
 hospital.universe <- bind_rows(imp.total, pchc.universe.m) %>% 
@@ -95,7 +103,7 @@ pack.profile <- packid.profile.raw %>%
   mutate(packid = stri_pad_left(Pack_Id, 7, 0)) %>% 
   distinct(packid, ims_product_cn)
 
-prod.profile <- packid.profile %>%
+prod.profile <- pack.profile %>%
   mutate(prodid = substr(packid, 1, 5)) %>% 
   distinct(prodid, ims_product_cn1 = ims_product_cn)
 
@@ -130,7 +138,22 @@ servier.result <- servier.city %>%
             DosageUnits = sum(DosageUnits, na.rm = TRUE)) %>% 
   ungroup() %>% 
   bind_rows(servier.city) %>% 
-  filter(City %in% c('Nation', '北京', '上海', '杭州')) %>% 
+  filter(City %in% c('Nation', kTargetCity)) %>% 
+  mutate(Sales = if_else(MKT == 'HTN' & ATC3 == 'C07', Sales * 0.75, Sales), 
+         Sales = if_else(MKT == 'HTN' & ATC3 == 'C08', Sales * 0.9, Sales), 
+         Sales = if_else(MKT == 'IHD' & ATC3 == 'C07', Sales * 0.25, Sales), 
+         Sales = if_else(MKT == 'IHD' & ATC3 == 'C08', Sales * 0.1, Sales), 
+         Units = if_else(MKT == 'HTN' & ATC3 == 'C07', Units * 0.75, Units), 
+         Units = if_else(MKT == 'HTN' & ATC3 == 'C08', Units * 0.9, Units), 
+         Units = if_else(MKT == 'IHD' & ATC3 == 'C07', Units * 0.25, Units), 
+         Units = if_else(MKT == 'IHD' & ATC3 == 'C08', Units * 0.1, Units), 
+         DosageUnits = if_else(MKT == 'HTN' & ATC3 == 'C07', DosageUnits * 0.75, DosageUnits), 
+         DosageUnits = if_else(MKT == 'HTN' & ATC3 == 'C08', DosageUnits * 0.9, DosageUnits), 
+         DosageUnits = if_else(MKT == 'IHD' & ATC3 == 'C07', DosageUnits * 0.25, DosageUnits), 
+         DosageUnits = if_else(MKT == 'IHD' & ATC3 == 'C08', DosageUnits * 0.1, DosageUnits)) %>% 
+  mutate(Sales = round(Sales, 2), 
+         Units = round(Units), 
+         DosageUnits = round(DosageUnits)) %>% 
   select(Pack_ID, Channel, Province, City, Date, ATC3, MKT, Molecule_Desc, 
          Prod_Desc, Corp_Desc, Sales, Units, DosageUnits, `CITY-EN`, 
          TherapeuticClsII, Prod_CN_Name, Package, Dosage, Quantity, 

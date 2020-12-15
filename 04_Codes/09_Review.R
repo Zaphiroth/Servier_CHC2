@@ -21,26 +21,23 @@ servier.chpa <- chpa.format %>%
               values_from = value) %>% 
   left_join(market.def, by = c('Pack_ID' = 'packid')) %>% 
   filter(!is.na(market), 
+         UNIT > 0, RENMINBI > 0, 
          stri_sub(quarter, 1, 4) %in% c('2018', '2019', '2020')) %>% 
-  mutate(Prd_desc = trimws(stri_sub(Prd_desc, 1, -4))) %>% 
-  select(Pack_ID, Date = quarter, ATC3 = ATC3_Code, MKT = market, Molecule_Desc, 
-         Prod_Desc = Prd_desc, Pck_Desc, Corp_Desc, Units = UNIT, 
-         Sales = RENMINBI)
+  mutate(atc3 = stri_sub(atc4, 1, 4)) %>% 
+  select(Pack_ID, Date = quarter, ATC3 = atc3, MKT = market, 
+         Molecule_Desc = molecule, Prod_Desc = Prd_desc, Pck_Desc = pack, 
+         Corp_Desc = corp, Units = UNIT, Sales = RENMINBI)
 
 write.xlsx(servier.chpa, '05_Internal_Review/Servier_CHC2_CHPA_2018Q1_2020Q3.xlsx')
 
 # Update
-chpa.info <- servier.chpa %>% 
-  distinct(Pack_ID, ATC3, Molecule_Desc, Prod_Desc, Pck_Desc, Corp_Desc)
+# chpa.info <- servier.chpa %>% 
+#   distinct(Pack_ID, ATC3, Molecule_Desc, Prod_Desc, Pck_Desc, Corp_Desc)
 
-delivery.update <- servier.result %>% 
-  distinct(Pack_ID, Channel, Province, City, Date, MKT, 
-           Sales, Units, DosageUnits) %>% 
-  left_join(chpa.info, by = 'Pack_ID') %>% 
-  filter(!is.na(ATC3), stri_sub(Date, 1, 4) %in% c('2018', '2019', '2020'))
+# delivery.update <- servier.result %>% 
+#   distinct(Pack_ID, Channel, Province, City, Date, ATC3, MKT, Molecule_Desc, 
+#            Prod_Desc, Corp_Desc, Sales, Units, DosageUnits) %>% 
+#   left_join(chpa.info, by = 'Pack_ID') %>% 
+#   filter(!is.na(ATC3), stri_sub(Date, 1, 4) %in% c('2018', '2019', '2020'))
 
-write.xlsx(delivery.update, '05_Internal_Review/Servier_CHC2_Delivery_Updated.xlsx')
-
-
-
-
+# write.xlsx(delivery.update, '05_Internal_Review/Servier_CHC2_Delivery_Updated.xlsx')
