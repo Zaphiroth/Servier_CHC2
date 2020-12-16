@@ -87,7 +87,7 @@ UpdatePrice <- function(proj.nation, raw.total) {
            price = if_else(is.na(price), price_pack_year, price)) %>% 
     mutate(units = sales / price) %>% 
     filter(units > 0, sales > 0, price > 0) %>% 
-    select(year, date, quarter, province, city, district, packid, 
+    select(channel, year, date, quarter, province, city, district, packid, 
            flag_sample, price, units, sales)
   
   return(proj.price)

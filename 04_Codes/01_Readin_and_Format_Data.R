@@ -33,10 +33,11 @@ pchc.mapping4 <- pchc.mapping3 %>%
   ungroup()
 
 ## CHPA
-std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1021.xlsx') %>% 
+std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
   distinct(corp = CORP_NAME_EN, type = MNF_TYPE, atc3 = ATC3_CODE, atc4 = ATC4_CODE, 
-           molecule = MOLE_NAME_EN, product = PROD_DESC, pack = PCK_DESC, 
-           packid = PACK_ID)
+           atc3_cn = ATC3, molecule = MOLE_NAME_EN, molecule_cn = MOLE_NAME_CH, 
+           product = PROD_DESC, product_cn = PROD_NAME_CH, pack = PCK_DESC, 
+           route = NFC1_NAME_CH, packid = PACK_ID)
 
 ## market definition
 market.def <- read_xlsx("02_Inputs/市场分子式明细_chk_20201127.xlsx") %>% 
@@ -154,8 +155,5 @@ raw.total <- bind_rows(raw.data, raw.gz, raw.sh) %>%
   summarise(units = sum(units, na.rm = TRUE), 
             sales = sum(sales, na.rm = TRUE)) %>% 
   ungroup()
-
-missing.pack <- market.def %>% filter(!(packid %in% raw.total$packid))
-missing.mol <- market.def %>% filter(!(stri_sub(packid, 1, 5) %in% stri_sub(raw.total$packid, 1, 5)))
 
 write_feather(raw.total, '03_Outputs/Servier_CHC2_Raw.feather')
