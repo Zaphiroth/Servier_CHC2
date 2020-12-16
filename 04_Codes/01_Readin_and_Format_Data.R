@@ -50,6 +50,7 @@ market.def <- read_xlsx("02_Inputs/市场分子式明细_chk_20201127.xlsx") %>%
 ## Servier
 raw.list <- map(list.files('02_Inputs/data', pattern = '*.xlsx', full.names = TRUE), 
                 function(x) {
+                  print(x)
                   read.xlsx(x) %>% 
                     mutate(Year = as.character(Year), 
                            Month = as.character(Month), 
