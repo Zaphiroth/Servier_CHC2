@@ -33,6 +33,12 @@ pchc.mapping4 <- pchc.mapping3 %>%
   ungroup()
 
 ## CHPA
+chpa.info <- read.xlsx('02_Inputs/ims_chpa_to20Q3.xlsx', cols = 1:21, startRow = 4) %>%  
+  distinct(corp = Corp_Desc, type = MNF_TYPE, atc3 = ATC3_Code, atc4 = ATC4_Code,  
+           molecule = Molecule_Desc, product = Prd_desc, pack = Pck_Desc,  
+           packid = Pack_ID) 
+
+## master
 std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
   distinct(corp = CORP_NAME_EN, type = MNF_TYPE, atc3 = ATC3_CODE, atc4 = ATC4_CODE, 
            atc3_cn = ATC3, molecule = MOLE_NAME_EN, molecule_cn = MOLE_NAME_CH, 
@@ -41,9 +47,10 @@ std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xl
 
 ## market definition
 market.def <- read_xlsx("02_Inputs/市场分子式明细_chk_20201127.xlsx") %>% 
-  distinct(atc3 = ATCIII.Code, molecule = Molecule.Composition.Name, market = TC) %>% 
-  left_join(std.info, by = c('atc3', 'molecule')) %>% 
-  filter(!is.na(packid))
+  distinct(atc3 = ATCIII.Code, molecule = Molecule.Composition.Name, market = TC)
+# %>% 
+#   left_join(std.info, by = c('atc3', 'molecule')) %>% 
+#   filter(!is.na(packid))
 
 
 ##---- Raw data ----
@@ -65,11 +72,15 @@ raw.data <- bind_rows(raw.list) %>%
            city = if_else(City == "市辖区", "北京", gsub("市", "", City)), 
            district = County, 
            hospital = Hospital_Name, 
+           atc3 = stri_sub(ATC4_Code, 1, 4), 
+           molecule = Molecule_Desc, 
            packid = stri_pad_left(packcode, 7, 0), 
            units = if_else(is.na(Volume), Value / Price, Volume), 
            sales = Value) %>% 
   left_join(pchc.mapping3, by = c('province', 'city', 'district', 'hospital')) %>% 
-  filter(!is.na(pchc), stri_sub(packid, 1, 5) %in% stri_sub(market.def$packid, 1, 5)) %>% 
+  filter(!is.na(pchc)) %>% 
+  left_join(market.def, by = c('atc3', 'molecule')) %>% 
+  filter(!is.na(market)) %>% 
   mutate(packid = if_else(stri_sub(packid, 1, 5) == '47775', 
                           stri_paste('58906', stri_sub(packid, 6, 7)), 
                           packid), 
@@ -89,12 +100,16 @@ raw.gz <- raw.gz1 %>%
            province = '广东', 
            city = '广州', 
            hospital = Hospital_Name, 
+           atc3 = stri_sub(ATC4_Code, 1, 4), 
+           molecule = Molecule_Desc, 
            packid = stri_pad_left(packcode, 7, 0), 
            price = Price, 
            units = if_else(is.na(Volume), Value / Price, Volume), 
            sales = Value) %>% 
   left_join(pchc.mapping3, by = c('province', 'city', 'hospital')) %>% 
-  filter(!is.na(pchc), stri_sub(packid, 1, 5) %in% stri_sub(market.def$packid, 1, 5)) %>% 
+  filter(!is.na(pchc)) %>% 
+  left_join(market.def, by = c('atc3', 'molecule')) %>% 
+  filter(!is.na(market)) %>% 
   mutate(packid = if_else(stri_sub(packid, 1, 5) == '47775', 
                           stri_paste('58906', stri_sub(packid, 6, 7)), 
                           packid), 
@@ -105,6 +120,11 @@ raw.gz <- raw.gz1 %>%
   select(year, date, quarter, province, city, district, pchc, packid, units, sales)
 
 ## Shanghai
+sh.info <- chpa.info %>% 
+  distinct(prodid = stri_sub(packid, 1, 5), 
+           atc3, 
+           molecule)
+
 raw.sh1 <- read.xlsx('02_Inputs/data/上海/上海_2017.xlsx')
 raw.sh2 <- read.xlsx('02_Inputs/data/上海/上海_2018.xlsx')
 
@@ -133,9 +153,13 @@ raw.sh <- bind_rows(raw.sh1, raw.sh2) %>%
                           pchc == 'PCHC06645' ~ 'PCHC06644', 
                           pchc == 'PCHC06722' ~ 'PCHC06721', 
                           pchc == 'PCHC06840' ~ 'PCHC06839', 
-                          TRUE ~ pchc)) %>% 
+                          TRUE ~ pchc), 
+         prodid = stri_sub(packid, 1, 5)) %>% 
   left_join(pchc.mapping4, by = c('province', 'city', 'pchc')) %>% 
-  filter(pchc != '#N/A', stri_sub(packid, 1, 5) %in% stri_sub(market.def$packid, 1, 5)) %>% 
+  filter(pchc != '#N/A') %>% 
+  left_join(sh.info, by = 'prodid') %>% 
+  left_join(market.def, by = c('atc3', 'molecule')) %>% 
+  filter(!is.na(market)) %>% 
   mutate(packid = if_else(stri_sub(packid, 1, 5) == '47775', 
                           stri_paste('58906', stri_sub(packid, 6, 7)), 
                           packid), 
