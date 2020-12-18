@@ -17,8 +17,8 @@ FormatServier <- function(proj.price, market.def,
     summarise(sales = sum(sales, na.rm = TRUE), 
               units = sum(units, na.rm = TRUE)) %>% 
     ungroup() %>% 
-    left_join(market.def, by = 'packid') %>% 
-    filter(!is.na(market)) %>% 
+    left_join(std.info, by = 'packid') %>% 
+    left_join(market.def, by = c('atc3', 'molecule')) %>% 
     left_join(city.en, by = c('city' = 'City')) %>% 
     mutate(prodid = stri_sub(packid, 1, 5)) %>% 
     left_join(prod.bid, by = 'prodid') %>% 

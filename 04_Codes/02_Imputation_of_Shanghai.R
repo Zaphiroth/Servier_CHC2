@@ -155,3 +155,10 @@ imp.sh <- bind_rows(sh.predict.sales.18, sh.predict.sales.19, sh.predict.sales.2
   ungroup() %>% 
   filter(units > 0, sales > 0) %>% 
   select(year, date, quarter, province, city, district, pchc, packid, units, sales, flag)
+
+imp.total <- raw.total %>% 
+  mutate(flag = 0) %>% 
+  bind_rows(imp.sh) %>% 
+  filter(year %in% c('2018', '2019', '2020'), !(quarter %in% c('2020Q4')))
+
+write_feather(imp.total, '03_Outputs/Servier_CHC2_Imp.feather')

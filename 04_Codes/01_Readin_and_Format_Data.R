@@ -8,7 +8,7 @@
 
 ##---- Universe info ----
 ## PCHC info
-pchc.mapping <- read.xlsx("02_Inputs/Universe_PCHCCode_20201209.xlsx", sheet = "PCHC")
+pchc.mapping <- read.xlsx('02_Inputs/Universe_PCHCCode_20201209.xlsx', sheet = 'PCHC')
 
 pchc.mapping1 <- pchc.mapping %>% 
   filter(!is.na(`单位名称`), !is.na(PCHC_Code)) %>% 
@@ -36,7 +36,7 @@ pchc.mapping4 <- pchc.mapping3 %>%
 chpa.info <- read.xlsx('02_Inputs/ims_chpa_to20Q3.xlsx', cols = 1:21, startRow = 4) %>%  
   distinct(corp = Corp_Desc, type = MNF_TYPE, atc3 = ATC3_Code, atc4 = ATC4_Code,  
            molecule = Molecule_Desc, product = Prd_desc, pack = Pck_Desc,  
-           packid = Pack_ID) 
+           packid = Pack_ID)
 
 ## master
 std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
@@ -46,7 +46,7 @@ std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xl
            route = NFC1_NAME_CH, packid = PACK_ID)
 
 ## market definition
-market.def <- read_xlsx("02_Inputs/市场分子式明细_chk_20201127.xlsx") %>% 
+market.def <- read_xlsx('02_Inputs/市场分子式明细_chk_20201127.xlsx') %>% 
   distinct(atc3 = ATCIII.Code, molecule = Molecule.Composition.Name, market = TC)
 # %>% 
 #   left_join(std.info, by = c('atc3', 'molecule')) %>% 
@@ -55,21 +55,30 @@ market.def <- read_xlsx("02_Inputs/市场分子式明细_chk_20201127.xlsx") %>%
 
 ##---- Raw data ----
 ## Servier
-raw.list <- map(list.files('02_Inputs/data', pattern = '*.xlsx', full.names = TRUE), 
-                function(x) {
-                  print(x)
-                  read.xlsx(x) %>% 
-                    mutate(Year = as.character(Year), 
-                           Month = as.character(Month), 
-                           Prd_desc_ZB = as.character(Prd_desc_ZB))
-                })
+# raw.list <- map(list.files('02_Inputs/data', pattern = '*.xlsx', full.names = TRUE), 
+#                 function(x) {
+#                   print(x)
+#                   read.xlsx(x) %>% 
+#                     mutate(Year = as.character(Year), 
+#                            Month = as.character(Month), 
+#                            Prd_desc_ZB = as.character(Prd_desc_ZB))
+#                 })
 
-raw.data <- bind_rows(raw.list) %>% 
+raw.servier <- read_csv('02_Inputs/data/Servier_ahbjjssdzj_17181920Q1Q2Q3_fj1718_nozj20Q3_packid_moleinfo.csv', 
+                        locale = locale(encoding = 'GB18030'))
+raw.fj1 <- read.xlsx('02_Inputs/data/Servier_福建省_2019_packid_moleinfo(predicted by Servier_fj_2018_packid_moleinfo_v3).xlsx')
+raw.fj2 <- read.xlsx('02_Inputs/data/Servier_福建省_2020_packid_moleinfo(predicted by Servier_fj_2018_packid_moleinfo_v3).xlsx')
+raw.zj <- read.xlsx('02_Inputs/data/Servier_浙江省_2020Q3_packid_moleinfo(predicted by Servier_zj_2020Q1Q2_packid_moleinfo_v3).xlsx')
+
+raw.data <- raw.servier %>% 
+  mutate(Year = as.character(Year), 
+         Month = as.character(Month)) %>% 
+  bind_rows(raw.fj1, raw.fj2, raw.zj) %>% 
   distinct(year = as.character(Year), 
            quarter = Quarter, 
            date = as.character(Month), 
            province = gsub('省|市', '', Province), 
-           city = if_else(City == "市辖区", "北京", gsub("市", "", City)), 
+           city = if_else(City == '市辖区', '北京', gsub('市', '', City)), 
            district = County, 
            hospital = Hospital_Name, 
            atc3 = stri_sub(ATC4_Code, 1, 4), 
@@ -92,8 +101,9 @@ raw.data <- bind_rows(raw.list) %>%
 
 ## Guangzhou
 raw.gz1 <- read_feather('02_Inputs/data/广州/Servier_guangzhou_17181920Q1Q2_packid_moleinfo.feather')
+raw.gz2 <- read.xlsx('02_Inputs/data/广州/gz_广东省_2020Q3_packid_moleinfo.xlsx')
 
-raw.gz <- raw.gz1 %>% 
+raw.gz <- bind_rows(raw.gz1, raw.gz2) %>% 
   distinct(year = as.character(Year), 
            quarter = Quarter, 
            date = as.character(Month), 
