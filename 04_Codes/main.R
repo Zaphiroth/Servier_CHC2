@@ -15,8 +15,11 @@ pchc.universe <- read.xlsx("02_Inputs/2020_PCHC_Universe更新维护.xlsx",
                            sheet = "2020 CHC universe", cols = 1:19)
 
 pchc.universe.m <- pchc.universe %>% 
-  distinct(province = `省`, city = `地级市`, district = `区[县/县级市]`, 
-           pchc = `新版PCHC_Code`, est = `其中：西药药品收入（千元）`) %>% 
+  distinct(province = gsub('省|市', '', `省`), 
+           city = gsub('市', '', `地级市`), 
+           district = `区[县/县级市]`, 
+           pchc = `新版PCHC_Code`, 
+           est = `其中：西药药品收入（千元）`) %>% 
   filter(est > 0) %>% 
   group_by(pchc) %>% 
   summarise(province = first(na.omit(province)), 
@@ -46,7 +49,6 @@ city.tier <- read.xlsx("02_Inputs/pchc_city_tier.xlsx") %>%
 
 ##---- Run Project ----
 source('04_Codes/functions/ProjectSample.R', encoding = 'UTF-8')
-# source('04_Codes/functions/ProjectSmallSample.R', encoding = 'UTF-8')
 source('04_Codes/functions/ProjectNation.R', encoding = 'UTF-8')
 source('04_Codes/functions/UpdatePrice.R', encoding = 'UTF-8')
 
@@ -68,48 +70,67 @@ write_feather(proj.price, '03_Outputs/Servier_CHC2_Proj.feather')
 
 
 ##---- Format info ----
-## zs flag
-# zs.flag <- read.xlsx("02_Inputs/13城市的招标flag_zs_flag.xlsx") %>% 
-#   filter(!is.na(`是否是13城市`)) %>% 
-#   distinct(province = `省`, city = `地级市`, pchc = PCHC_Code, zs_flag)
+## standard info
+std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
+  mutate(PACK_ID = gsub('禁用', '', PACK_ID)) %>% 
+  distinct(corp = CORP_NAME_EN, type = MNF_TYPE, atc3 = ATC3_CODE, atc4 = ATC4_CODE, 
+           atc3_cn = ATC3, molecule = MOLE_NAME_EN, molecule_cn = MOLE_NAME_CH, 
+           product = PROD_DESC, product_cn = PROD_NAME_CH, pack = PCK_DESC, 
+           route = NFC1_NAME_CH, packid = PACK_ID) %>% 
+  bind_rows(chpa.info) %>% 
+  group_by(atc3) %>% 
+  mutate(atc3_cn = first(na.omit(atc3_cn))) %>% 
+  ungroup() %>% 
+  group_by(molecule) %>% 
+  mutate(molecule_cn = first(na.omit(molecule_cn))) %>% 
+  ungroup() %>% 
+  group_by(product) %>% 
+  mutate(product_cn = first(na.omit(product_cn))) %>% 
+  ungroup() %>% 
+  group_by(packid) %>% 
+  summarise(corp = first(na.omit(corp)), 
+            type = first(na.omit(type)), 
+            atc3 = first(na.omit(atc3)), 
+            atc4 = first(na.omit(atc4)), 
+            atc3_cn = first(na.omit(atc3_cn)), 
+            molecule = first(na.omit(molecule)), 
+            molecule_cn =first(na.omit(molecule_cn)), 
+            product = first(na.omit(product)), 
+            product_cn = first(na.omit(product_cn)), 
+            pack = first(na.omit(pack)), 
+            route = first(na.omit(route))) %>% 
+  ungroup()
 
-## 4+7 flag
-# capital.47 <- read_xlsx("02_Inputs/4+7+省会名单.xlsx") %>% 
-#   filter(`类别` %in% "4+7城市") %>% 
-#   mutate(city = gsub("市", "", `城市`)) %>% 
-#   select(city, `是否是4+7城市` = `类别`)
+## VBP info
+vbp.info.list <- map(1:4, 
+                     function(x) {
+                       print(x)
+                       read.xlsx('02_Inputs/带量采购中标结果汇总（1-3批）_20201222.xlsx', 
+                                 sheet = x) %>% 
+                         mutate(`中标时间` = as.character(as.Date(as.numeric(`中标时间`), origin = '1899-12-30')), 
+                                `执行日期` = as.character(as.Date(as.numeric(`执行日期`), origin = '1899-12-30')), 
+                                sheet = x)
+                     })
 
-## bid name
-prod.bid <- read_xlsx("02_Inputs/Displayname Mapping.xlsx", sheet = 1) %>% 
-  mutate(Pack_ID = stri_pad_left(Pack_ID, 7, 0),
-         prodid = stri_sub(Pack_ID, 1, 5),
-         `Display Name3 CN` = if_else(`Display Name3 CN` %in% c("中标品规", "非中标品规"), 
-                                      "仿制", 
-                                      `Display Name3 CN`),
-         `Display Name3 CN` = gsub("-2|-1", "", `Display Name3 CN`),
-         `Display Name2 CN` = gsub("-2|-1", "", `Display Name2 CN`)) %>% 
-  distinct(name1 = `Display Name1 CN`,
-           name2 = `Display Name2 CN`,
-           name3 = `Display Name3 CN`,
-           prodid)
+vbp.nat <- bind_rows(vbp.info.list) %>% 
+  mutate(PACK_ID = stri_pad_left(as.numeric(PACK_ID), 7, 0)) %>% 
+  filter(!is.na(PACK_ID)) %>% 
+  mutate(city = 'National') %>% 
+  distinct(city, molecule_cn = `通用名`, packid = PACK_ID)
 
-## corporation, ATC3
-# corp.atc3 <- read_xlsx("02_Inputs/产品性质_chpa 08.23(1).xlsx", sheet = 1)
-# 
-# atc3.cn <- distinct(corp.atc3, atc3 = ATC3_Code, `ATC3中文分类` = `类别`)
-# 
-# molecule.cn <- distinct(corp.atc3, molecule = Molecule_Desc, Molecule_CN = `分子`)
+vbp.city <- bind_rows(vbp.info.list) %>% 
+  mutate(PACK_ID = stri_pad_left(as.numeric(PACK_ID), 7, 0)) %>% 
+  filter(!is.na(PACK_ID)) %>% 
+  filter(`省份` %in% c('北京', '上海', '浙江', '江苏')) %>% 
+  mutate(`城市` = case_when(`省份` == '北京' ~ '北京', 
+                          `省份` == '上海' ~ '上海', 
+                          `省份` == '浙江' ~ '杭州', 
+                          `省份` == '江苏' ~ '南京', 
+                          TRUE ~ `城市`)) %>% 
+  distinct(city = `城市`, molecule_cn = `通用名`, packid = PACK_ID)
 
-## new profile
-# packid.profile.raw <- read_xlsx("02_Inputs/packid_prod_20181112.xlsx")
-# 
-# pack.profile <- packid.profile.raw %>% 
-#   mutate(packid = stri_pad_left(Pack_Id, 7, 0)) %>% 
-#   distinct(packid, ims_product_cn)
-# 
-# prod.profile <- pack.profile %>%
-#   mutate(prodid = substr(packid, 1, 5)) %>% 
-#   distinct(prodid, ims_product_cn1 = ims_product_cn)
+vbp.info <- bind_rows(vbp.nat, vbp.city) %>% 
+  mutate(`是否是中标品种` = '中标产品')
 
 ## city EN
 city.en <- read.xlsx("02_Inputs/CityEN.xlsx")
@@ -120,15 +141,15 @@ source('04_Codes/functions/FormatServier.R')
 
 servier.city <- FormatServier(proj.price = proj.price, 
                               market.def = market.def, 
-                              city.en = city.en, 
-                              prod.bid = prod.bid)
+                              std.info = std.info, 
+                              vbp.info = vbp.info, 
+                              city.en = city.en)
 
 servier.result <- servier.city %>% 
   filter(Channel == 'CHC') %>% 
   group_by(Pack_ID, Channel, Date, ATC3, ATC4, MKT, Molecule_Desc, Prod_Desc, 
            Pck_Desc, Corp_Desc, TherapeuticClsII, TherapeuticClsIII, Prod_CN_Name, 
-           Package, Dosage, Quantity, `是否进入带量采购`, `是否是原研`, 
-           `是否是中标品种`, `是否是MNC`, `ATC3中文分类`, `给药途径`) %>% 
+           Package, Dosage, Quantity, `ATC3中文分类`, `给药途径`) %>% 
   summarise(Province = 'National', 
             City = 'National', 
             Sales = sum(Sales, na.rm = TRUE), 
@@ -137,7 +158,11 @@ servier.result <- servier.city %>%
             `CITY-EN` = 'National', 
             Sales_raw = sum(Sales_raw, na.rm = TRUE), 
             Units_raw = sum(Units_raw, na.rm = TRUE), 
-            DosageUnits_raw = sum(DosageUnits_raw, na.rm = TRUE)) %>% 
+            DosageUnits_raw = sum(DosageUnits_raw, na.rm = TRUE), 
+            `是否进入带量采购` = first(na.omit(`是否进入带量采购`)), 
+            `是否是原研` = first(na.omit(`是否是原研`)), 
+            `是否是中标品种` = first(na.omit(`是否是中标品种`)), 
+            `是否是MNC` = first(na.omit(`是否是MNC`))) %>% 
   ungroup() %>% 
   bind_rows(servier.city) %>% 
   filter(City %in% c('National', kTargetCity)) %>% 

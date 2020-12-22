@@ -38,19 +38,9 @@ chpa.info <- read.xlsx('02_Inputs/ims_chpa_to20Q3.xlsx', cols = 1:21, startRow =
            molecule = Molecule_Desc, product = Prd_desc, pack = Pck_Desc,  
            packid = Pack_ID)
 
-## master
-std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
-  distinct(corp = CORP_NAME_EN, type = MNF_TYPE, atc3 = ATC3_CODE, atc4 = ATC4_CODE, 
-           atc3_cn = ATC3, molecule = MOLE_NAME_EN, molecule_cn = MOLE_NAME_CH, 
-           product = PROD_DESC, product_cn = PROD_NAME_CH, pack = PCK_DESC, 
-           route = NFC1_NAME_CH, packid = PACK_ID)
-
 ## market definition
 market.def <- read_xlsx('02_Inputs/市场分子式明细_chk_20201127.xlsx') %>% 
   distinct(atc3 = ATCIII.Code, molecule = Molecule.Composition.Name, market = TC)
-# %>% 
-#   left_join(std.info, by = c('atc3', 'molecule')) %>% 
-#   filter(!is.na(packid))
 
 
 ##---- Raw data ----
@@ -100,8 +90,8 @@ raw.data <- raw.servier %>%
   select(year, date, quarter, province, city, district, pchc, packid, units, sales)
 
 ## Guangzhou
-raw.gz1 <- read_feather('02_Inputs/data/广州/Servier_guangzhou_17181920Q1Q2_packid_moleinfo.feather')
-raw.gz2 <- read.xlsx('02_Inputs/data/广州/gz_广东省_2020Q3_packid_moleinfo.xlsx')
+raw.gz1 <- read_feather('02_Inputs/data/Servier_guangzhou_17181920Q1Q2_packid_moleinfo.feather')
+raw.gz2 <- read.xlsx('02_Inputs/data/gz_广东省_2020Q3_packid_moleinfo.xlsx')
 
 raw.gz <- bind_rows(raw.gz1, raw.gz2) %>% 
   distinct(year = as.character(Year), 
@@ -135,8 +125,8 @@ sh.info <- chpa.info %>%
            atc3, 
            molecule)
 
-raw.sh1 <- read.xlsx('02_Inputs/data/上海/上海_2017.xlsx')
-raw.sh2 <- read.xlsx('02_Inputs/data/上海/上海_2018.xlsx')
+raw.sh1 <- read.xlsx('02_Inputs/data/上海_2017.xlsx')
+raw.sh2 <- read.xlsx('02_Inputs/data/上海_2018.xlsx')
 
 raw.sh <- bind_rows(raw.sh1, raw.sh2) %>% 
   mutate(quarter_m = stri_sub(Date, 5, 6)) %>% 

@@ -8,18 +8,20 @@
 
 ##---- Readin ----
 ## Beijing CHS
-raw.chs <- map(list.files('02_Inputs/data/CHS', pattern = '*.xlsx', full.names = TRUE), 
-               function(x) {
-                 read.xlsx(x) %>% 
-                   mutate(Year = as.character(Year), 
-                          Month = as.character(Month), 
-                          Prd_desc_ZB = as.character(Prd_desc_ZB))
-               })
+# raw.chs <- map(list.files('02_Inputs/data/CHS', pattern = '*.xlsx', full.names = TRUE), 
+#                function(x) {
+#                  read.xlsx(x) %>% 
+#                    mutate(Year = as.character(Year), 
+#                           Month = as.character(Month), 
+#                           Prd_desc_ZB = as.character(Prd_desc_ZB))
+#                })
 
 
 ##---- Beijing CHS projection ----
-bj.chs <- bind_rows(raw.chs) %>% 
-  filter(grepl('服务站', Hospital_Name)) %>% 
+bj.chs <- raw.servier %>% 
+  filter(Province == '北京市', 
+         Year %in% c(2018, 2019, 2020), 
+         grepl('服务站', Hospital_Name)) %>% 
   distinct(year = as.character(Year), 
            quarter = Quarter, 
            date = as.character(Month), 

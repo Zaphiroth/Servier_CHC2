@@ -6,10 +6,11 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-FormatServier <- function(proj.price, market.def, 
-                          city.en, capital.47, prod.bid, 
-                          atc3.cn, molecule.cn, 
-                          pack.profile, prod.profile) {
+FormatServier <- function(proj.price, 
+                          market.def, 
+                          std.info, 
+                          vbp.info, 
+                          city.en) {
   
   ##---- Summary ----
   servier.result <- proj.price %>% 
@@ -17,24 +18,14 @@ FormatServier <- function(proj.price, market.def,
     summarise(sales = sum(sales, na.rm = TRUE), 
               units = sum(units, na.rm = TRUE)) %>% 
     ungroup() %>% 
+    left_join(city.en, by = 'city') %>% 
     left_join(std.info, by = 'packid') %>% 
     left_join(market.def, by = c('atc3', 'molecule')) %>% 
-    left_join(city.en, by = c('city' = 'City')) %>% 
-    mutate(prodid = stri_sub(packid, 1, 5)) %>% 
-    left_join(prod.bid, by = 'prodid') %>% 
-    mutate(name1 = if_else(molecule_cn %in% c('赖诺普利', '卡托普利'), 
-                            '4+7分子', 
-                            name1), 
-           name1 = if_else(name1 == '非4+7分子', NA_character_, name1)) %>% 
-    mutate(name2 = if_else(name2 == '非中标产品', NA_character_, name2), 
-           name3 = trimws(name3), 
-           name3 = ifelse(is.na(name3) & type != 'L', '原研', 
-                          ifelse(is.na(name3) & type == 'L', '仿制', 
-                                 name3))) %>% 
-    rename(`是否进入带量采购` = name1,
-           `是否是中标品种` = name2,
-           `是否是原研` = name3,
-           `是否是MNC` = type) %>% 
+    left_join(vbp.info, by = c('city', 'molecule_cn', 'packid')) %>% 
+    mutate(`是否进入带量采购` = if_else(molecule_cn %in% unique(vbp.info$molecule_cn), 
+                                '4+7分子', NA_character_), 
+           `是否是原研` = if_else(type != 'L', '原研', '仿制'), 
+           `是否是MNC` = if_else(type != 'L', 'MNC', 'Local')) %>% 
     mutate(first_num_position = stri_locate_first(pack, regex = '\\d')[,1],
            last_space_position = stri_locate_last(pack, regex = '\\s')[,1],
            Package = str_squish(substr(pack, 1, first_num_position - 1)),
@@ -112,7 +103,6 @@ FormatServier <- function(proj.price, market.def,
            Sales = sales_adj, 
            Units = units_adj, 
            DosageUnits = dosageunits_adj, 
-           # `Period-MAT`, 
            `CITY-EN`, 
            TherapeuticClsII, 
            TherapeuticClsIII, 
