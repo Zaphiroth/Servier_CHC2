@@ -59,11 +59,14 @@ raw.servier <- read_csv('02_Inputs/data/Servier_ahbjjssdzj_17181920Q1Q2Q3_fj1718
 raw.fj1 <- read.xlsx('02_Inputs/data/Servier_福建省_2019_packid_moleinfo(predicted by Servier_fj_2018_packid_moleinfo_v3).xlsx')
 raw.fj2 <- read.xlsx('02_Inputs/data/Servier_福建省_2020_packid_moleinfo(predicted by Servier_fj_2018_packid_moleinfo_v3).xlsx')
 raw.zj <- read.xlsx('02_Inputs/data/Servier_浙江省_2020Q3_packid_moleinfo(predicted by Servier_zj_2020Q1Q2_packid_moleinfo_v3).xlsx')
+raw.venous <- read_csv('02_Inputs/data/ahbjjssdzj_17181920Q1Q2Q3_nozj20Q3_packid_moleinfo.csv', 
+                       locale = locale(encoding = 'GB18030'))
+raw.zj.venous <- read.xlsx('02_Inputs/data/Servier_痔疮静脉_浙江省_2020Q3_packid_moleinfo(predicted by Servier_zj_2020Q1Q2_packid_moleinfo_v1).xlsx')
 
-raw.data <- raw.servier %>% 
+raw.data <- bind_rows(raw.servier, raw.venous) %>% 
   mutate(Year = as.character(Year), 
          Month = as.character(Month)) %>% 
-  bind_rows(raw.fj1, raw.fj2, raw.zj) %>% 
+  bind_rows(raw.fj1, raw.fj2, raw.zj, raw.zj.venous) %>% 
   distinct(year = as.character(Year), 
            quarter = Quarter, 
            date = as.character(Month), 
@@ -87,7 +90,7 @@ raw.data <- raw.servier %>%
                           stri_paste('64895', stri_sub(packid, 6, 7)), 
                           packid)) %>% 
   filter(units > 0, sales > 0) %>% 
-  select(year, date, quarter, province, city, district, pchc, packid, units, sales)
+  select(year, date, quarter, province, city, district, pchc, market, packid, units, sales)
 
 ## Guangzhou
 raw.gz1 <- read_feather('02_Inputs/data/Servier_guangzhou_17181920Q1Q2_packid_moleinfo.feather')
@@ -117,7 +120,7 @@ raw.gz <- bind_rows(raw.gz1, raw.gz2) %>%
                           stri_paste('64895', stri_sub(packid, 6, 7)), 
                           packid)) %>% 
   filter(units > 0, sales > 0) %>% 
-  select(year, date, quarter, province, city, district, pchc, packid, units, sales)
+  select(year, date, quarter, province, city, district, pchc, market, packid, units, sales)
 
 ## Shanghai
 sh.info <- chpa.info %>% 
@@ -167,7 +170,7 @@ raw.sh <- bind_rows(raw.sh1, raw.sh2) %>%
                           stri_paste('64895', stri_sub(packid, 6, 7)), 
                           packid)) %>% 
   filter(units > 0, sales > 0) %>% 
-  select(year, date, quarter, province, city, district, pchc, packid, units, sales)
+  select(year, date, quarter, province, city, district, pchc, market, packid, units, sales)
 
 ## total
 raw.total <- bind_rows(raw.data, raw.gz, raw.sh) %>% 
@@ -176,7 +179,7 @@ raw.total <- bind_rows(raw.data, raw.gz, raw.sh) %>%
          city = first(na.omit(city)), 
          district = first(na.omit(district))) %>% 
   ungroup() %>% 
-  group_by(year, date, quarter, province, city, district, pchc, packid) %>% 
+  group_by(year, date, quarter, province, city, district, pchc, market, packid) %>% 
   summarise(units = sum(units, na.rm = TRUE), 
             sales = sum(sales, na.rm = TRUE)) %>% 
   ungroup()

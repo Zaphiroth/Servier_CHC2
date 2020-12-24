@@ -49,6 +49,7 @@ city.tier <- read.xlsx("02_Inputs/pchc_city_tier.xlsx") %>%
 
 ##---- Run Project ----
 source('04_Codes/functions/ProjectSample.R', encoding = 'UTF-8')
+# source('04_Codes/functions/ProjectSmallSample.R', encoding = 'UTF-8')
 source('04_Codes/functions/ProjectNation.R', encoding = 'UTF-8')
 source('04_Codes/functions/UpdatePrice.R', encoding = 'UTF-8')
 
@@ -60,6 +61,8 @@ proj.nation <- ProjectNation(proj.sample.total = proj.sample,
                              city.tier = city.tier)
 
 proj.cs <- proj.nation %>% 
+  mutate(sales = if_else(province == '上海', sales * 0.5, sales), 
+         units = if_else(province == '上海', units * 0.5, units)) %>% 
   mutate(channel = 'CHC') %>% 
   bind_rows(bj.chs)
 
@@ -71,13 +74,19 @@ write_feather(proj.price, '03_Outputs/Servier_CHC2_Proj.feather')
 
 ##---- Format info ----
 ## standard info
-std.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
+chpa.info <- read.xlsx('02_Inputs/ims_chpa_to20Q3.xlsx', cols = 1:21, startRow = 4) %>%  
+  distinct(corp = Corp_Desc, type = MNF_TYPE, atc3 = ATC3_Code, atc4 = ATC4_Code,  
+           molecule = Molecule_Desc, product = Prd_desc, pack = Pck_Desc,  
+           packid = Pack_ID)
+
+master.info <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
   mutate(PACK_ID = gsub('禁用', '', PACK_ID)) %>% 
   distinct(corp = CORP_NAME_EN, type = MNF_TYPE, atc3 = ATC3_CODE, atc4 = ATC4_CODE, 
            atc3_cn = ATC3, molecule = MOLE_NAME_EN, molecule_cn = MOLE_NAME_CH, 
            product = PROD_DESC, product_cn = PROD_NAME_CH, pack = PCK_DESC, 
-           route = NFC1_NAME_CH, packid = PACK_ID) %>% 
-  bind_rows(chpa.info) %>% 
+           route = NFC1_NAME_CH, packid = PACK_ID)
+
+std.info <- bind_rows(chpa.info, master.info) %>% 
   group_by(atc3) %>% 
   mutate(atc3_cn = first(na.omit(atc3_cn))) %>% 
   ungroup() %>% 
@@ -140,13 +149,13 @@ city.en <- read.xlsx("02_Inputs/CityEN.xlsx")
 source('04_Codes/functions/FormatServier.R')
 
 servier.city <- FormatServier(proj.price = proj.price, 
-                              market.def = market.def, 
                               std.info = std.info, 
                               vbp.info = vbp.info, 
                               city.en = city.en)
 
 servier.result <- servier.city %>% 
-  filter(Channel == 'CHC') %>% 
+  filter(Channel == 'CHC', 
+         Sales > 0, Units > 0, DosageUnits > 0) %>% 
   group_by(Pack_ID, Channel, Date, ATC3, ATC4, MKT, Molecule_Desc, Prod_Desc, 
            Pck_Desc, Corp_Desc, TherapeuticClsII, TherapeuticClsIII, Prod_CN_Name, 
            Package, Dosage, Quantity, `ATC3中文分类`, `给药途径`) %>% 

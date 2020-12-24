@@ -7,20 +7,18 @@
 
 
 FormatServier <- function(proj.price, 
-                          market.def, 
                           std.info, 
                           vbp.info, 
                           city.en) {
   
   ##---- Summary ----
   servier.result <- proj.price %>% 
-    group_by(channel, year, quarter, province, city, packid) %>% 
+    group_by(channel, year, quarter, province, city, market, packid) %>% 
     summarise(sales = sum(sales, na.rm = TRUE), 
               units = sum(units, na.rm = TRUE)) %>% 
     ungroup() %>% 
     left_join(city.en, by = 'city') %>% 
     left_join(std.info, by = 'packid') %>% 
-    left_join(market.def, by = c('atc3', 'molecule')) %>% 
     left_join(vbp.info, by = c('city', 'molecule_cn', 'packid')) %>% 
     mutate(`是否进入带量采购` = if_else(molecule_cn %in% unique(vbp.info$molecule_cn), 
                                 '4+7分子', NA_character_), 

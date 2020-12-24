@@ -22,9 +22,10 @@ ProjectNation <- function(proj.sample.total,
   
   ## nation sample
   nation.sample <- proj.sample.total %>% 
+    filter(!(province %in% c('北京', '上海'))) %>% 
     left_join(city.tier, by = "city") %>% 
     mutate(tier = ifelse(is.na(tier), 1, tier)) %>% 
-    group_by(date, province, city, tier, district, packid) %>% 
+    group_by(date, province, city, tier, district, market, packid) %>% 
     summarise(sales = sum(sales, na.rm = TRUE), 
               units = sum(units, na.rm = TRUE)) %>% 
     ungroup() %>% 
@@ -55,7 +56,7 @@ ProjectNation <- function(proj.sample.total,
                    values_drop_na = FALSE) %>% 
       pivot_wider(names_from = index, values_from = value) %>% 
       select(date, province = province.x, city = city.x, tier, 
-             district = district.x, packid, sales, units, est.x, est.y, slope)
+             district = district.x, market, packid, sales, units, est.x, est.y, slope)
   }
   
   ## result
@@ -66,7 +67,7 @@ ProjectNation <- function(proj.sample.total,
            sales_m = sales * slope, 
            units_m = units * slope, 
            flag_sample = 0) %>% 
-    group_by(date, province, city, district, packid, flag_sample) %>% 
+    group_by(date, province, city, district, market, packid, flag_sample) %>% 
     summarise(sales = sum(sales_m, na.rm = TRUE), 
               units = sum(units_m, na.rm = TRUE)) %>% 
     ungroup() %>% 

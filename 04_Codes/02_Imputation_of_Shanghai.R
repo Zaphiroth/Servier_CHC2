@@ -14,6 +14,7 @@ sh.model.data <- raw.total %>%
 
 sh.model.set <- sh.model.data %>% 
   filter(quarter %in% c('2017Q1', '2017Q2', '2017Q3', '2017Q4', '2018Q1')) %>% 
+  distinct(date, province, city, district, pchc, packid, sales, flag) %>% 
   group_by(province, city, district, pchc, date, flag) %>% 
   summarise(sales = sum(sales, na.rm = TRUE)) %>% 
   ungroup() %>% 
@@ -60,6 +61,7 @@ sh.model.weight <- as.data.frame(sh.knn.model$D) %>%
 ##---- Growth ----
 sh.model.growth <- sh.model.data %>% 
   filter(flag == 0) %>% 
+  distinct(year, date, quarter, province, city, district, pchc, packid, sales, flag) %>% 
   group_by(knn_pchc = pchc, packid, year, date, quarter) %>% 
   summarise(sales = sum(sales, na.rm = TRUE)) %>% 
   ungroup() %>% 
@@ -91,7 +93,7 @@ sh.model.growth <- sh.model.data %>%
 ## predict 2018
 sh.predict.sales.18 <- sh.model.data %>% 
   filter(quarter %in% c('2017Q2', '2017Q3', '2017Q4'), flag == 1) %>% 
-  left_join(sh.model.growth, by = c('pchc', 'packid', 'year', 'date')) %>% 
+  left_join(sh.model.growth, by = c('year', 'date', 'pchc', 'packid')) %>% 
   mutate(growth = if_else(is.na(growth), 1, growth),
          growth = if_else(growth > 3, 3, growth),
          growth = if_else(growth > quantile(growth, 0.9),
@@ -104,14 +106,14 @@ sh.predict.sales.18 <- sh.model.data %>%
          quarter = gsub('2017', '2018', quarter),
          year = '2018',
          flag = 1) %>% 
-  select(year, date, quarter, province, city, district, pchc, packid, 
+  select(year, date, quarter, province, city, district, pchc, market, packid, 
          units = units_imp, sales = sales_imp, flag)
 
 ## predict 2019
 sh.predict.sales.19 <- sh.model.data %>% 
   filter(quarter %in% c('2018Q1'), flag == 1) %>% 
   bind_rows(sh.predict.sales.18) %>% 
-  left_join(sh.model.growth, by = c('pchc', 'packid', 'year', 'date')) %>% 
+  left_join(sh.model.growth, by = c('year', 'date', 'pchc', 'packid')) %>% 
   mutate(growth = if_else(is.na(growth), 1, growth),
          growth = if_else(growth > 3, 3, growth),
          growth = if_else(growth > quantile(growth, 0.9),
@@ -124,13 +126,13 @@ sh.predict.sales.19 <- sh.model.data %>%
          quarter = gsub('2018', '2019', quarter),
          year = '2019',
          flag = 1) %>% 
-  select(year, date, quarter, province, city, district, pchc, packid, 
+  select(year, date, quarter, province, city, district, pchc, market, packid, 
          units = units_imp, sales = sales_imp, flag)
 
 ## predict 2020
 sh.predict.sales.20 <- sh.predict.sales.19 %>% 
   filter(quarter %in% c('2019Q1', '2019Q2', '2019Q3')) %>% 
-  left_join(sh.model.growth, by = c('pchc', 'packid', 'year', 'date')) %>% 
+  left_join(sh.model.growth, by = c('year', 'date', 'pchc', 'packid')) %>% 
   mutate(growth = if_else(is.na(growth), 1, growth),
          growth = if_else(growth > 3, 3, growth),
          growth = if_else(growth > quantile(growth, 0.9),
@@ -143,22 +145,15 @@ sh.predict.sales.20 <- sh.predict.sales.19 %>%
          quarter = gsub('2019', '2020', quarter),
          year = '2020',
          flag = 1) %>% 
-  select(year, date, quarter, province, city, district, pchc, packid, 
+  select(year, date, quarter, province, city, district, pchc, market, packid, 
          units = units_imp, sales = sales_imp, flag)
 
 
 ##---- Result ----
 imp.sh <- bind_rows(sh.predict.sales.18, sh.predict.sales.19, sh.predict.sales.20) %>% 
-  group_by(year, date, quarter, province, city, district, pchc, packid, flag) %>% 
+  group_by(year, date, quarter, province, city, district, pchc, market, packid, flag) %>% 
   summarise(units = sum(units, na.rm = TRUE),
             sales = sum(sales, na.rm = TRUE)) %>% 
   ungroup() %>% 
   filter(units > 0, sales > 0) %>% 
-  select(year, date, quarter, province, city, district, pchc, packid, units, sales, flag)
-
-imp.total <- raw.total %>% 
-  mutate(flag = 0) %>% 
-  bind_rows(imp.sh) %>% 
-  filter(year %in% c('2018', '2019', '2020'), !(quarter %in% c('2020Q4')))
-
-write_feather(imp.total, '03_Outputs/Servier_CHC2_Imp.feather')
+  select(year, date, quarter, province, city, district, pchc, market, packid, units, sales, flag)
