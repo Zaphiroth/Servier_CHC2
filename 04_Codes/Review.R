@@ -25,7 +25,8 @@ servier.chpa <- chpa.format %>%
          stri_sub(quarter, 1, 4) %in% c('2018', '2019', '2020')) %>% 
   select(Pack_ID, Date = quarter, ATC3 = ATC3_Code, MKT = market, 
          Molecule_Desc, Prod_Desc = Prd_desc, Pck_Desc, 
-         Corp_Desc, Units = UNIT, Sales = RENMINBI)
+         Corp_Desc, Units = UNIT, Sales = RENMINBI) %>% 
+  filter(!(ATC3 == 'V03B' & !(Prod_Desc %in% kTCM)))
 
 write.xlsx(servier.chpa, '05_Internal_Review/Servier_CHC2_CHPA_2018Q1_2020Q3.xlsx')
 
@@ -33,6 +34,10 @@ write.xlsx(servier.chpa, '05_Internal_Review/Servier_CHC2_CHPA_2018Q1_2020Q3.xls
 ##---- Price ----
 price.check <- servier.result %>% 
   mutate(price = round(Sales / Units)) %>% 
+  group_by(Channel, City, MKT, Molecule_Desc, Prod_Desc, Pack_ID) %>% 
+  mutate(Sales = sum(Sales, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  arrange(Channel, City, MKT, -Sales, Date) %>% 
   distinct(Channel, Date, City, MKT, Molecule_Desc, Prod_Desc, Pack_ID, price) %>% 
   pivot_wider(id_cols = c(Channel, City, MKT, Molecule_Desc, Prod_Desc, Pack_ID), 
               names_from = Date, 

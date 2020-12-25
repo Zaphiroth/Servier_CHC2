@@ -40,6 +40,7 @@ chpa.info <- read.xlsx('02_Inputs/ims_chpa_to20Q3.xlsx', cols = 1:21, startRow =
 
 ## market definition
 market.def <- read_xlsx('02_Inputs/市场分子式明细_chk_20201127.xlsx') %>% 
+  filter(!(ATCIII.Code %in% c('A10C', 'A10D'))) %>% 
   distinct(atc3 = ATCIII.Code, molecule = Molecule.Composition.Name, market = TC)
 
 

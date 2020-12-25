@@ -57,7 +57,7 @@ fj.model.weight <- as.data.frame(fj.knn.model$D) %>%
                values_to = 'knn_weight')
 
 
-##---- Prediction ----
+##---- Result ----
 imp.fj <- fj.model.data %>% 
   filter(flag == 0, market == 'Venous Disease') %>% 
   group_by(year, date, quarter, knn_pchc = pchc, market, packid) %>% 
@@ -72,12 +72,3 @@ imp.fj <- fj.model.data %>%
             sales = sum(sales * knn_weight, na.rm = TRUE)) %>% 
   ungroup() %>% 
   mutate(flag = 1)
-
-
-##---- Result ----
-imp.total <- raw.total %>% 
-  mutate(flag = 0) %>% 
-  bind_rows(imp.sh, imp.fj) %>% 
-  filter(year %in% c('2018', '2019', '2020'), !(quarter %in% c('2020Q4')))
-
-write_feather(imp.total, '03_Outputs/Servier_CHC2_Imp.feather')

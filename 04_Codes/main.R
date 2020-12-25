@@ -6,6 +6,15 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
+##---- Total sample ----
+imp.total <- raw.total %>% 
+  mutate(flag = 0) %>% 
+  bind_rows(imp.sh, imp.gz, imp.fj) %>% 
+  filter(year %in% c('2018', '2019', '2020'), !(quarter %in% c('2020Q4')))
+
+write_feather(imp.total, '03_Outputs/Servier_CHC2_Imp.feather')
+
+
 ##---- Universe info ----
 ## target city
 kTargetCity <- c('北京', '上海', '杭州', '南京')
@@ -49,7 +58,6 @@ city.tier <- read.xlsx("02_Inputs/pchc_city_tier.xlsx") %>%
 
 ##---- Run Project ----
 source('04_Codes/functions/ProjectSample.R', encoding = 'UTF-8')
-# source('04_Codes/functions/ProjectSmallSample.R', encoding = 'UTF-8')
 source('04_Codes/functions/ProjectNation.R', encoding = 'UTF-8')
 source('04_Codes/functions/UpdatePrice.R', encoding = 'UTF-8')
 
@@ -153,6 +161,20 @@ servier.city <- FormatServier(proj.price = proj.price,
                               vbp.info = vbp.info, 
                               city.en = city.en)
 
+## TCM
+kTCM <- c('PU JI                    S4I', 
+          'GANG TAI                 SYO', 
+          'FU ZHI QING              GGS', 
+          'MUSK HEMORRHOIDS         HMA', 
+          'SHEXIANG ZHICHUAN        HMA', 
+          'JIN XUAN ZHI KE          HMA', 
+          'FU FANG JING JIE         RGZ', 
+          'ZHI JI                   G.Z', 
+          'NIUHUANG ZHIQING         HJD', 
+          'JIUHUA ZHICHUANG         JRJ', 
+          'HUAIYU QINGRE ZHIX       HMA', 
+          'XIAO ZHI                 LZF')
+
 servier.result <- servier.city %>% 
   filter(Channel == 'CHC', 
          Sales > 0, Units > 0, DosageUnits > 0) %>% 
@@ -174,6 +196,7 @@ servier.result <- servier.city %>%
             `是否是MNC` = first(na.omit(`是否是MNC`))) %>% 
   ungroup() %>% 
   bind_rows(servier.city) %>% 
+  filter(!(ATC3 == 'V03B' & !(Prod_Desc %in% kTCM))) %>% 
   filter(City %in% c('National', kTargetCity)) %>% 
   mutate(`Period-MAT` = case_when(
     Date %in% c('2020Q3', '2020Q2', '2020Q1', '2019Q4') ~ 'MAT20Q3', 
