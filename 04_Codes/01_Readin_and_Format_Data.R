@@ -175,6 +175,13 @@ raw.sh <- bind_rows(raw.sh1, raw.sh2) %>%
 
 ## total
 raw.total <- bind_rows(raw.data, raw.gz, raw.sh) %>% 
+  mutate(packid = case_when(packid == '0060212' & city %in% c('北京', '南京') ~ '0060206', 
+                            packid == '0243304' & city %in% c('北京') ~ '0243302', 
+                            packid == '0243306' ~ '0243304', 
+                            packid == '1065108' & city %in% c('北京') ~ '1065106', 
+                            packid == '1065108' & !(city %in% c('北京')) ~ '1065102', 
+                            packid == '3145210' & city %in% c('北京') ~ '3145208', 
+                            TRUE ~ packid)) %>% 
   group_by(pchc) %>% 
   mutate(province = first(na.omit(province)), 
          city = first(na.omit(city)), 

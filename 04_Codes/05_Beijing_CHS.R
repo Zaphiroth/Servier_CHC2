@@ -24,6 +24,13 @@ bj.chs <- bind_rows(raw.servier, raw.venous) %>%
            price = Price, 
            units = Value / Price, 
            sales = Value) %>% 
+  mutate(packid = case_when(packid == '0060212' & city %in% c('北京', '南京') ~ '0060206', 
+                            packid == '0243304' & city %in% c('北京') ~ '0243302', 
+                            packid == '0243306' ~ '0243304', 
+                            packid == '1065108' & city %in% c('北京') ~ '1065106', 
+                            packid == '1065108' & !(city %in% c('北京')) ~ '1065102', 
+                            packid == '3145210' & city %in% c('北京') ~ '3145208', 
+                            TRUE ~ packid)) %>% 
   left_join(market.def, by = c('atc3', 'molecule')) %>% 
   filter(!is.na(market)) %>% 
   group_by(date, province, city, district, market, packid) %>% 

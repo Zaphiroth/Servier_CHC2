@@ -162,22 +162,29 @@ servier.city <- FormatServier(proj.price = proj.price,
                               city.en = city.en)
 
 ## TCM
-kTCM <- c('PU JI                    S4I', 
-          'GANG TAI                 SYO', 
-          'FU ZHI QING              GGS', 
-          'MUSK HEMORRHOIDS         HMA', 
-          'SHEXIANG ZHICHUAN        HMA', 
-          'JIN XUAN ZHI KE          HMA', 
-          'FU FANG JING JIE         RGZ', 
-          'ZHI JI                   G.Z', 
-          'NIUHUANG ZHIQING         HJD', 
-          'JIUHUA ZHICHUANG         JRJ', 
-          'HUAIYU QINGRE ZHIX       HMA', 
-          'XIAO ZHI                 LZF')
+kTCM <- c('PU JI              S4I', 
+          'GANG TAI           SYO', 
+          'FU ZHI QING        GGS', 
+          'MUSK HEMORRHOIDS   HMA', 
+          'SHEXIANG ZHICHUAN  HMA', 
+          'JIN XUAN ZHI KE    HMA', 
+          'FU FANG JING JIE   RGZ', 
+          'ZHI JI             G.Z', 
+          'NIUHUANG ZHIQING   HJD', 
+          'JIUHUA ZHICHUANG   JRJ', 
+          'HUAIYU QINGRE ZHIX HMA', 
+          'XIAO ZHI           LZF')
 
+## price
+price.update <- read.xlsx('02_Inputs/Servier_Price_Update.xlsx') %>% 
+  pivot_longer(cols = starts_with('20'), 
+               names_to = 'Date', 
+               values_to = 'price') %>% 
+  mutate(flag_price = 1)
+
+## result
 servier.result <- servier.city %>% 
-  filter(Channel == 'CHC', 
-         Sales > 0, Units > 0, DosageUnits > 0) %>% 
+  filter(Channel == 'CHC') %>% 
   group_by(Pack_ID, Channel, Date, ATC3, ATC4, MKT, Molecule_Desc, Prod_Desc, 
            Pck_Desc, Corp_Desc, TherapeuticClsII, TherapeuticClsIII, Prod_CN_Name, 
            Package, Dosage, Quantity, `ATC3中文分类`, `给药途径`) %>% 
@@ -196,6 +203,18 @@ servier.result <- servier.city %>%
             `是否是MNC` = first(na.omit(`是否是MNC`))) %>% 
   ungroup() %>% 
   bind_rows(servier.city) %>% 
+  left_join(price.update, by = c('Channel', 'City', 'MKT', 'Molecule_Desc', 
+                                 'Prod_Desc', 'Pack_ID', 'Date')) %>% 
+  mutate(Units = if_else(!is.na(flag_price), Sales / price, Units), 
+         DosageUnits = if_else(!is.na(flag_price), Quantity * Units, DosageUnits), 
+         Units_raw = if_else(!is.na(flag_price), Sales_raw / price, Units_raw), 
+         DosageUnits_raw = if_else(!is.na(flag_price), Quantity * Units_raw, DosageUnits_raw), 
+         Units = round(Units), 
+         DosageUnits = round(DosageUnits), 
+         Units_raw = round(Units_raw), 
+         DosageUnits_raw = round(DosageUnits_raw)) %>% 
+  filter(Sales > 0, Units > 0, DosageUnits > 0, 
+         !is.infinite(Sales), !is.infinite(Units), !is.infinite(DosageUnits)) %>% 
   filter(!(ATC3 == 'V03B' & !(Prod_Desc %in% kTCM))) %>% 
   filter(City %in% c('National', kTargetCity)) %>% 
   mutate(`Period-MAT` = case_when(
