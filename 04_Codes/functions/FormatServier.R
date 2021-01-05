@@ -19,7 +19,7 @@ FormatServier <- function(proj.price,
     ungroup() %>% 
     left_join(city.en, by = 'city') %>% 
     left_join(std.info, by = 'packid') %>% 
-    left_join(vbp.info, by = c('city', 'molecule_cn', 'packid')) %>% 
+    left_join(vbp.info, by = c('city', 'molecule', 'packid')) %>% 
     mutate(`是否进入带量采购` = if_else(molecule_cn %in% unique(vbp.info$molecule_cn), 
                                 '4+7分子', NA_character_), 
            `是否是原研` = if_else(type != 'L', '原研', '仿制'), 

@@ -147,7 +147,13 @@ vbp.city <- bind_rows(vbp.info.list) %>%
   distinct(city = `城市`, molecule_cn = `通用名`, packid = PACK_ID)
 
 vbp.info <- bind_rows(vbp.nat, vbp.city) %>% 
-  mutate(`是否是中标品种` = '中标产品')
+  mutate(`是否是中标品种` = '中标产品', 
+         prodid = stri_sub(packid, 1, 5)) %>% 
+  left_join(distinct(chpa.info, 
+                     prodid = stri_sub(packid, 1, 5), 
+                     molecule), 
+            by = 'prodid') %>% 
+  distinct(city, molecule, packid, `是否是中标品种`)
 
 ## city EN
 city.en <- read.xlsx("02_Inputs/CityEN.xlsx")
