@@ -147,7 +147,7 @@ write.xlsx(bind_rows(market.wm, market.tcm), '05_Internal_Review/痔疮静脉市
 
 
 ##---- Adjustment ----
-servier.delivery <- read.xlsx('06_Deliveries/Servier_CHC2_2018Q4_2020Q3_20201231_final.xlsx')
+servier.delivery <- read.xlsx('06_Deliveries/Servier_CHC2_2018Q4_2020Q3_20210106_final_hx.xlsx')
 
 servier.delivery.adj <- servier.delivery %>% 
   filter(!(ATC3 != 'A10S' & `给药途径` == '注射用药')) %>% 
@@ -161,9 +161,6 @@ servier.delivery.adj <- servier.delivery %>%
          Pack_ID = stri_pad_left(Pack_ID, 7, 0)) %>% 
   select(-`是否是中标品种`) %>% 
   left_join(vbp.info, by = c('City' = 'city', 'Molecule_Desc' = 'molecule', 'Pack_ID' = 'packid')) %>% 
-  group_by(Pack_ID) %>% 
-  mutate(`是否是中标品种` = first(na.omit(`是否是中标品种`))) %>% 
-  ungroup() %>% 
   select(Pack_ID, Channel, City, Date, ATC3, ATC4, MKT, Molecule_Desc, 
          Prod_Desc, Pck_Desc, Corp_Desc, Sales, Units, DosageUnits, `QTR-MAT`, 
          `CITY-EN`, TherapeuticClsII, TherapeuticClsIII, Prod_CN_Name, Package, 
@@ -174,12 +171,19 @@ servier.delivery.adj <- servier.delivery %>%
 write.xlsx(servier.delivery.adj, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3_final.xlsx')
 
 
+##---- TCM product CN ----
+venous.raw <- read.xlsx('05_Internal_Review/Venous_Disease_MKT.xlsx', sheet = 'CMAX_Updated')
+prod.cn <- read.xlsx('02_Inputs/Product standardization master data-A-S-0106_updated.xlsx') %>% 
+  distinct(PACK_ID, PROD_NAME_CH, NFC1_NAME_CH)
 
+venous.update <- venous.raw %>% 
+  left_join(prod.cn, by = c('Pack_ID' = 'PACK_ID')) %>% 
+  mutate(Prod_CN_Name = if_else(is.na(Prod_CN_Name), PROD_NAME_CH, Prod_CN_Name), 
+         `给药途径` = if_else(is.na(`给药途径`), NFC1_NAME_CH, `给药途径`), 
+         Product = trimws(stri_sub(Prod_Desc, 1, -4))) %>% 
+  select(-PROD_NAME_CH, -NFC1_NAME_CH)
 
-
-
-
-
+write.xlsx(venous.update, '03_Outputs/Venous_Market_Update.xlsx')
 
 
 
