@@ -186,6 +186,45 @@ venous.update <- venous.raw %>%
 write.xlsx(venous.update, '03_Outputs/Venous_Market_Update.xlsx')
 
 
+##---- Adjustment ----
+delivery1 <- read.xlsx('06_Deliveries/Servier_CHC2_2018Q4_2020Q3_20210106_final.xlsx')
+delivery2 <- read.xlsx('06_Deliveries/Servier_CHC2_2018Q4_2020Q3_Venous_MKT_20210107_final_m.xlsx')
+
+delivery1.adj <- delivery1 %>% 
+  rename(Value = Sales, 
+         `category I` = TherapeuticClsII, 
+         `category II` = TherapeuticClsIII) %>% 
+  mutate(MKT = if_else(MKT == 'OAD', 'Diabetes', MKT), 
+         `category II` = if_else(MKT == 'Diabetes', `category I`, `category II`), 
+         `category I` = case_when(MKT == 'Diabetes' ~ 'OAD&GLP-1', 
+                                  `category I` == 'ANTI-HTN' ~ 'Others', 
+                                  `category I` == 'DIURETICS' ~ 'DU', 
+                                  `category I` == 'RAASi Plain' ~ 'RAASi PLAIN', 
+                                  `category I` == 'NITRITES' ~ 'LAN', 
+                                  TRUE ~ `category I`), 
+         `category II` = case_when(`category II` == 'A+C FDC' ~ 'A+C', 
+                                   `category II` == 'A+D FDC' ~ 'A+D', 
+                                   `category II` == 'ACEi PLAIN' ~ 'ACEI', 
+                                   `category II` == 'ARB PLAIN' ~ 'ARB', 
+                                   `category II` == 'AG Is' ~ 'AGI', 
+                                   `category II` == 'BIGUANIDE' ~ 'MET', 
+                                   `category II` == 'DPP-IV' ~ 'DPP-4', 
+                                   `category II` == 'GLITAZONE' ~ 'TZD', 
+                                   `category II` == 'METAGLINIDE' ~ 'GLINIDE', 
+                                   `category II` == 'SULPHONYLUREA' ~ 'SU', 
+                                   TRUE ~ `category II`))
+
+delivery2.adj <- delivery2 %>% 
+  rename(Value = Sales, 
+         `category I` = TherapeuticClsII, 
+         `category II` = TherapeuticClsIII) %>% 
+  mutate(`category II` = case_when(`category I` == 'TCM' & `给药途径` == '口服固体' ~ 'TCM Oral', 
+                                   `category I` == 'TCM' & `给药途径` == '外用制剂' ~ 'TCM Topical', 
+                                   TRUE ~ NA_character_))
+
+write.xlsx(delivery1.adj, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3_HTN&IHD&Diabetes.xlsx')
+write.xlsx(delivery2.adj, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3_Venou.xlsx')
+
 
 
 
