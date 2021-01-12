@@ -220,12 +220,28 @@ delivery2.adj <- delivery2 %>%
          `category II` = TherapeuticClsIII) %>% 
   mutate(`category II` = case_when(`category I` == 'TCM' & `给药途径` == '口服固体' ~ 'TCM Oral', 
                                    `category I` == 'TCM' & `给药途径` == '外用制剂' ~ 'TCM Topical', 
-                                   TRUE ~ NA_character_))
+                                   TRUE ~ NA_character_), 
+         `是否进入带量采购` = as.character(`是否进入带量采购`), 
+         `是否是中标品种` = as.character(`是否是中标品种`))
 
-write.xlsx(delivery1.adj, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3_HTN&IHD&Diabetes.xlsx')
-write.xlsx(delivery2.adj, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3_Venou.xlsx')
+# write.xlsx(delivery1.adj, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3_HTN&IHD&Diabetes.xlsx')
+# write.xlsx(delivery2.adj, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3_Venous.xlsx')
 
+corp.cn1 <- read.xlsx('02_Inputs/Product standardization master data-A-S-1211.xlsx') %>% 
+  mutate(PACK_ID = gsub('禁用', '', PACK_ID)) %>% 
+  distinct(CORP_NAME_EN, CORP_NAME_CH)
 
+corp.cn2 <- read.xlsx('02_Inputs/MANU.xlsx') %>% 
+  distinct(name, namec)
 
+delivery3 <- bind_rows(delivery1.adj, delivery2.adj) %>% 
+  left_join(corp.cn2, by = c('Corp_Desc' = 'name')) %>% 
+  select(Pack_ID, Channel, City, Date, ATC3, ATC4, MKT, Molecule_Desc, Prod_Desc, 
+         Pck_Desc, Corp_Desc, Corporation_CN = namec, Value, Units, DosageUnits, 
+         `QTR-MAT`, `CITY-EN`, `category I`, `category II`, Prod_CN_Name, Package, 
+         Dosage, Quantity, `是否进入带量采购`, `是否是原研`, `是否是中标品种`, 
+         `是否是MNC`, Sales_raw, Units_raw, DosageUnits_raw, `给药途径`, Product)
+
+write.xlsx(delivery3, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3.xlsx')
 
 
