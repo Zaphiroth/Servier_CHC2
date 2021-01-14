@@ -245,3 +245,31 @@ delivery3 <- bind_rows(delivery1.adj, delivery2.adj) %>%
 write.xlsx(delivery3, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3.xlsx')
 
 
+##---- VBP molecule ----
+vbp.mole <- vbp.info %>% 
+  mutate(`是否进入带量采购` = case_when(sheet == 1 ~ '4+7', 
+                                sheet == 2 ~ '扩围', 
+                                sheet == 3 ~ '第二批', 
+                                sheet == 4 ~ '第三批', 
+                                TRUE ~ NA_character_), 
+         `是否进入带量采购` = if_else(`是否进入带量采购` == '扩围' & city == 'National', 
+                              '4+7', `是否进入带量采购`)) %>% 
+  filter(molecule != 'TRIMETAZIDINE') %>% 
+  distinct(city, molecule, `是否进入带量采购`)
+
+delivery4 <- read_excel('06_Deliveries/Servier_CHC2_2018Q4_2020Q3_20210111.xlsx')
+
+delivery5 <- delivery4 %>% 
+  select(-`是否进入带量采购`) %>% 
+  left_join(vbp.mole, by = c('City' = 'city', 'Molecule_Desc' = 'molecule')) %>% 
+  mutate(`是否进入带量采购` = case_when(Molecule_Desc == 'TRIMETAZIDINE' & `给药途径` == '口服固体长效' ~ '第二批', 
+                                Molecule_Desc == 'TRIMETAZIDINE' & `给药途径` == '口服固体' ~ '第三批', 
+                                TRUE ~ `是否进入带量采购`)) %>% 
+  select(Pack_ID, Channel, City, Date, ATC3, ATC4, MKT, Molecule_Desc, Prod_Desc, 
+         Pck_Desc, Corp_Desc, Value, Units, DosageUnits, `QTR-MAT`, `CITY-EN`, 
+         `category I`, `category II`, Prod_CN_Name, Package, Dosage, Quantity, 
+         `是否进入带量采购`, `是否是原研`, `是否是中标品种`, `是否是MNC`, 
+         Corporation_CN, Sales_raw, Units_raw, DosageUnits_raw, `给药途径`, Product)
+
+write.xlsx(delivery5, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3.xlsx')
+

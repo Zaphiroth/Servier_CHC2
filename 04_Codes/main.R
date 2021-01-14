@@ -133,7 +133,7 @@ vbp.nat <- bind_rows(vbp.info.list) %>%
   mutate(PACK_ID = stri_pad_left(as.numeric(PACK_ID), 7, 0)) %>% 
   filter(!is.na(PACK_ID)) %>% 
   mutate(city = 'National') %>% 
-  distinct(city, molecule_cn = `通用名`, packid = PACK_ID)
+  distinct(city, molecule_cn = `通用名`, packid = PACK_ID, sheet)
 
 vbp.city <- bind_rows(vbp.info.list) %>% 
   mutate(PACK_ID = stri_pad_left(as.numeric(PACK_ID), 7, 0)) %>% 
@@ -144,7 +144,7 @@ vbp.city <- bind_rows(vbp.info.list) %>%
                           `省份` == '浙江' ~ '杭州', 
                           `省份` == '江苏' ~ '南京', 
                           TRUE ~ `城市`)) %>% 
-  distinct(city = `城市`, molecule_cn = `通用名`, packid = PACK_ID)
+  distinct(city = `城市`, molecule_cn = `通用名`, packid = PACK_ID, sheet)
 
 vbp.info <- bind_rows(vbp.nat, vbp.city) %>% 
   mutate(`是否是中标品种` = '中标产品', 
@@ -153,7 +153,8 @@ vbp.info <- bind_rows(vbp.nat, vbp.city) %>%
                      prodid = stri_sub(packid, 1, 5), 
                      molecule), 
             by = 'prodid') %>% 
-  distinct(city, molecule, packid, `是否是中标品种`)
+  filter(!is.na(molecule)) %>% 
+  distinct(city, molecule, packid, `是否是中标品种`, sheet)
 
 ## city EN
 city.en <- read.xlsx("02_Inputs/CityEN.xlsx")
