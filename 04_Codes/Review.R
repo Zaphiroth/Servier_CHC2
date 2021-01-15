@@ -273,3 +273,27 @@ delivery5 <- delivery4 %>%
 
 write.xlsx(delivery5, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3.xlsx')
 
+
+##---- Column order ----
+delivery5 <- read_excel('06_Deliveries/Servier_CHC2_2018Q4_2020Q3_20210113.xlsx')
+
+delivery6 <- delivery5 %>% 
+  mutate(Date = gsub('MAT', '', Date), 
+         Year = stri_sub(Date, 1, 4), 
+         Quarter = stri_sub(Date, 5, 6), 
+         `category II` = if_else(is.na(`category II`) & MKT %in% c('HTN', 'Venous Disease'), 
+                                 `category I`, `category II`)) %>% 
+  select(Channel, City_EN = `CITY-EN`, City, `Period Type` = `QTR-MAT`, Year, 
+         Quarter, Date, `ATCIII Code` = ATC3, `ATCIV Code` = ATC4, MKT, 
+         `Category I` = `category I`, `Category II` = `category II`, 
+         `Molecule composition Name` = Molecule_Desc, `Product Name` = Product, 
+         Product = Prod_Desc, Prod_CN_Name, `Pack Code` = Pack_ID, 
+         `Pack Description` = Pck_Desc, `Pack Form` = Package, 
+         `Pack Strength` = Dosage, `Pack Size` = Quantity, 
+         `NFCI Description` = `给药途径`, `Corporation Description` = Corp_Desc, 
+         Corporation_CN, `Manufacture Type` = `是否是MNC`, VBP = `是否进入带量采购`, 
+         `是否是中标品种`, `是否是原研`, `Value LC` = Value, Units, 
+         `Counting Units` = DosageUnits, `Value LC_Raw` = Sales_raw, 
+         Units_Raw = Units_raw, `Counting Units_Raw` = DosageUnits_raw)
+
+write.xlsx(delivery6, '06_Deliveries/Servier_CHC2_2018Q4_2020Q3.xlsx')
