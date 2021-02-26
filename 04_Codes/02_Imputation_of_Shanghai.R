@@ -57,6 +57,18 @@ sh.model.weight <- as.data.frame(sh.knn.model$D) %>%
                names_to = 'knn_level', 
                values_to = 'knn_weight')
 
+## knn
+sh.knn <- sh.model.indice %>% 
+  left_join(sh.model.weight, by = c('province', 'city', 'district', 'pchc', 'knn_level'))
+
+write.xlsx(sh.knn, '03_Outputs/Shanghai_KNN_Result.xlsx')
+
+knn.data.bj <- sh.model.data %>% 
+  filter(flag == 0) %>% 
+  select(-flag)
+
+write_feather(knn.data.bj, '03_Outputs/Beijing_CHC_2017Q1_2020Q3.feather')
+
 
 ##---- Growth ----
 ## model growth
@@ -178,8 +190,8 @@ chpa.growth <- chpa.format %>%
   arrange(quarter, year) %>% 
   mutate(growth = lead(sales) / sales) %>% 
   ungroup() %>% 
-  filter(year %in% c('2017', '2018', '2019'), quarter != '2019Q4') %>% 
   mutate(quarter = stri_paste(year, quarter)) %>% 
+  filter(year %in% c('2017', '2018', '2019'), quarter != '2019Q4') %>% 
   select(year, quarter, packid, growth_sup = growth)
 
 ## predict 2018
